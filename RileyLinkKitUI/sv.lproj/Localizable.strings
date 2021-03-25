@@ -39,3 +39,7 @@
 
 /* The title of the cell showing uptime */
 "Uptime" = "Körs sedan";
+
+"Battery level" = "Batterinivå";
+
+
