@@ -53,16 +53,6 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
         }
     }
     
-    private var fw_hw: String? {
-        didSet {
-            guard isViewLoaded else {
-                return
-            }
-            
-            cellForRow(.orl)?.detailTextLabel?.text = fw_hw
-        }
-    }
-    
     private var uptime: TimeInterval? {
         didSet {
             guard isViewLoaded else {
@@ -72,17 +62,16 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
             cellForRow(.uptime)?.setDetailAge(uptime)
         }
     }
-    
+
     private var battery: String? {
         didSet {
             guard isViewLoaded else {
                 return
             }
-            
+
             cellForRow(.battery)?.setDetailBatteryLevel(battery)
         }
     }
-
 
     private var lastIdle: Date? {
         didSet {
@@ -138,7 +127,7 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
             } catch { }
         }
     }
-    
+
     func updateBatteryLevel() {
         device.runSession(withName: "Get battery level") { (session) in
             do {
@@ -150,19 +139,12 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
             }
         }
     }
-    
-    func orangeAction(index: Int) {
-        device.runSession(withName: "Orange Action \(index)") { (session) in
-            self.device.orangeAction(mode: index)
-        }
-    }
-    
+
     private func updateDeviceStatus() {
         device.getStatus { (status) in
             DispatchQueue.main.async {
                 self.lastIdle = status.lastIdle
                 self.firmwareVersion = status.firmwareDescription
-                self.fw_hw = status.fw_hw
             }
         }
     }
@@ -207,10 +189,7 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
                 if let state = note.userInfo?[PumpOps.notificationPumpStateKey] as? PumpState {
                     self?.pumpState = state
                 }
-            },
-            center.addObserver(forName: .DeviceFW_HWChange, object: device, queue: mainQueue) { [weak self] (note) in
-                self?.updateDeviceStatus()
-            },
+            }
         ]
     }
     
@@ -228,10 +207,8 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
         updateRSSI()
         
         updateUptime()
-        
+
         updateBatteryLevel()
-        
-        orangeAction(index: 9)
     }
     
     public override func viewWillDisappear(_ animated: Bool) {
@@ -286,7 +263,6 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
         case uptime
         case idleStatus
         case battery
-        case orl
     }
 
     private enum PumpRow: Int, CaseCountable {
@@ -308,11 +284,6 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
         case enableLED
         case discoverCommands
         case getStatistics
-        case yellow
-        case red
-        case off
-        case shake
-        case shakeOff
     }
 
     private func cellForRow(_ row: DeviceRow) -> UITableViewCell? {
@@ -378,9 +349,6 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
             case .battery:
                 cell.textLabel?.text = NSLocalizedString("Battery Level", comment: "The title of the cell showing battery level")
                 cell.setDetailBatteryLevel(battery)
-            case .orl:
-                cell.textLabel?.text = NSLocalizedString("ORL", comment: "The title of the cell showing ORL")
-                cell.detailTextLabel?.text = fw_hw
             }
         case .pump:
             switch PumpRow(rawValue: indexPath.row)! {
@@ -445,16 +413,6 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
                 
             case .getStatistics:
                 cell.textLabel?.text = LocalizedString("RileyLink Statistics", comment: "The title of the command to fetch RileyLink statistics")
-            case .yellow:
-                cell.textLabel?.text = NSLocalizedString("Lighten Yellow LED", comment: "The title of the cell showing Lighten Yellow LED")
-            case .red:
-                cell.textLabel?.text = NSLocalizedString("Lighten Red LED", comment: "The title of the cell showing Lighten Red LED")
-            case .off:
-                cell.textLabel?.text = NSLocalizedString("Turn Off LED", comment: "The title of the cell showing Turn Off LED")
-            case .shake:
-                cell.textLabel?.text = NSLocalizedString("Test Vibrator", comment: "The title of the cell showing Test Vibrator")
-            case .shakeOff:
-                cell.textLabel?.text = NSLocalizedString("Stop Vibrator", comment: "The title of the cell showing Stop Vibrator")
             }
         }
 
@@ -508,7 +466,7 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
                 break
             }
         case .commands:
-            var vc: CommandResponseViewController?
+            let vc: CommandResponseViewController
 
             switch CommandRow(rawValue: indexPath.row)! {
             case .tune:
@@ -535,20 +493,13 @@ public class RileyLinkMinimedDeviceTableViewController: UITableViewController {
                 vc = .discoverCommands(ops: ops, device: device)
             case .getStatistics:
                 vc = .getStatistics(ops: ops, device: device)
-            case .yellow: orangeAction(index: 1)
-            case .red: orangeAction(index: 2)
-            case .off: orangeAction(index: 3)
-            case .shake: orangeAction(index: 4)
-            case .shakeOff: orangeAction(index: 5)
             }
 
             if let cell = tableView.cellForRow(at: indexPath) {
-                vc?.title = cell.textLabel?.text
+                vc.title = cell.textLabel?.text
             }
 
-            if let vc = vc {
-                show(vc, sender: indexPath)
-            }
+            show(vc, sender: indexPath)
         case .pump:
             break
         }
@@ -593,16 +544,6 @@ private extension TimeInterval {
 
 
 private extension UITableViewCell {
-    
-    func setDetailBatteryLevel(_ batteryLevel: String?) {
-        if let unwrappedBatteryLevel = batteryLevel {
-            detailTextLabel?.text = unwrappedBatteryLevel + " %"
-        } else {
-            detailTextLabel?.text = ""
-        }
-    }
-    
-    
     func setDetailDate(_ date: Date?, formatter: DateFormatter) {
         if let date = date {
             detailTextLabel?.text = formatter.string(from: date)
